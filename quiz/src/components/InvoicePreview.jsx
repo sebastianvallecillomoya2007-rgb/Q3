@@ -2,22 +2,23 @@ import { formatCurrency, formatDate } from '../utils/formatters'
 import { calculateInvoiceTotals, calculateItemSubtotal } from '../utils/calculations'
 
 /**
- * Componente de visualización profesional de la factura lista para imprimir.
+ * Componente de visualización profesional de la factura tipo comprobante oficial.
  * @param {{
  *   invoice: any,
  *   onToggleStatus: (id: string) => void,
  *   onDuplicate: (invoice: any) => void,
- *   onDelete: (id: string) => void
+ *   onDelete: (id: string) => void,
+ *   onEditClick?: () => void
  * }} props
  */
-export function InvoicePreview({ invoice, onToggleStatus, onDuplicate, onDelete }) {
+export function InvoicePreview({ invoice, onToggleStatus, onDuplicate, onDelete, onEditClick }) {
   if (!invoice) {
     return (
-      <section className="invoice-preview blank-preview">
-        <div className="preview-placeholder">
-          <span className="placeholder-icon">✦</span>
-          <h2>Selecciona una factura</h2>
-          <p>Elige un comprobante del historial o emite uno nuevo para ver su diseño formal.</p>
+      <section className="preview-container-modern empty-preview-state">
+        <div className="empty-preview-card">
+          <span className="empty-preview-icon">🧾</span>
+          <h3>Ninguna factura seleccionada</h3>
+          <p>Selecciona una factura del historial o genera una nueva para ver su diseño oficial.</p>
         </div>
       </section>
     )
@@ -40,45 +41,55 @@ export function InvoicePreview({ invoice, onToggleStatus, onDuplicate, onDelete 
   }
 
   return (
-    <section className="invoice-preview">
-      {/* BARRA DE HERRAMIENTAS SUPERIOR */}
-      <div className="preview-toolbar">
-        <div>
-          <p className="eyebrow">DOCUMENTO TRIBUTARIO</p>
-          <h2>Vista Previa Oficial</h2>
+    <section className="preview-container-modern">
+      {/* BARRA DE HERRAMIENTAS DE VISTA PREVIA */}
+      <div className="preview-action-toolbar">
+        <div className="toolbar-info">
+          <span className="toolbar-tag">DOCUMENTO TRIBUTARIO</span>
+          <h2 className="toolbar-title">Vista Previa de Comprobante</h2>
         </div>
 
-        <div className="preview-actions">
+        <div className="toolbar-button-group">
           <button
             type="button"
-            className={`button ${isPaid ? 'button-soft-amber' : 'button-soft-green'}`}
+            className={`button button-sm ${isPaid ? 'button-soft-amber' : 'button-soft-green'}`}
             onClick={() => onToggleStatus(invoice.id)}
-            title="Cambiar estado de la factura"
+            title="Cambiar estado entre Pagada y Pendiente"
           >
-            {isPaid ? '↺ Marcar como Pendiente' : '✓ Marcar como Pagada'}
+            {isPaid ? '↺ Marcar Pendiente' : '✓ Marcar Pagada'}
           </button>
 
           <button
             type="button"
-            className="button button-soft"
+            className="button button-outline button-sm"
             onClick={() => onDuplicate(invoice)}
-            title="Duplicar ítems y cliente en una nueva factura"
+            title="Clonar datos para emitir otra factura similar"
           >
             📋 Duplicar
           </button>
 
+          {onEditClick && (
+            <button
+              type="button"
+              className="button button-outline button-sm"
+              onClick={onEditClick}
+            >
+              ✍️ Nueva
+            </button>
+          )}
+
           <button
             type="button"
-            className="button button-primary"
+            className="button button-primary button-sm"
             onClick={handlePrint}
-            title="Imprimir o guardar en PDF"
+            title="Imprimir o guardar como PDF"
           >
             🖨 Imprimir / PDF
           </button>
 
           <button
             type="button"
-            className="button button-danger-icon"
+            className="button button-danger-icon button-sm"
             onClick={handleConfirmDelete}
             title="Eliminar factura"
             aria-label="Eliminar factura"
@@ -88,138 +99,161 @@ export function InvoicePreview({ invoice, onToggleStatus, onDuplicate, onDelete 
         </div>
       </div>
 
-      {/* HOJA DE LA FACTURA IMPRIMIBLE */}
-      <article className="invoice-paper" id="invoice-printable-area">
-        {/* ENCABEZADO DE FACTURA */}
-        <header className="invoice-header">
-          <div className="invoice-brand-block">
-            <div className="brand-badge">
-              <span className="brand-logo">Q3</span>
+      {/* HOJA IMPRIMIBLE DE LA FACTURA (DOCUMENTO OFICIAL) */}
+      <article className="official-invoice-sheet" id="printable-invoice">
+        {/* CABECERA PRINCIPAL */}
+        <header className="invoice-sheet-header">
+          <div className="issuer-profile-block">
+            <div className="corporate-badge">
+              <div className="corporate-logo-icon">Q3</div>
               <div>
-                <span className="brand-sub">Comprobante Oficial</span>
+                <span className="corporate-tagline">COMPROBANTE ELECTRÓNICO OFICIAL</span>
+                <h1 className="corporate-name">{invoice.issuer.name}</h1>
               </div>
             </div>
-            <h1 className="issuer-name">{invoice.issuer.name}</h1>
-            <p className="issuer-tax">ID Fiscal / NIT: <strong>{invoice.issuer.taxId}</strong></p>
-            {invoice.issuer.address && <p className="issuer-detail">{invoice.issuer.address}</p>}
-            {invoice.issuer.email && <p className="issuer-detail">{invoice.issuer.email} · {invoice.issuer.phone}</p>}
+
+            <div className="issuer-details-list">
+              <p><strong>NIT / RUC:</strong> {invoice.issuer.taxId}</p>
+              {invoice.issuer.address && <p><strong>Dirección:</strong> {invoice.issuer.address}</p>}
+              {invoice.issuer.email && (
+                <p>
+                  <strong>Contacto:</strong> {invoice.issuer.email}
+                  {invoice.issuer.phone ? ` · ${invoice.issuer.phone}` : ''}
+                </p>
+              )}
+            </div>
           </div>
 
-          <div className="invoice-meta-block">
-            <div className="invoice-title-tag">FACTURA DE VENTA</div>
-            <strong className="invoice-number-display">{invoice.number}</strong>
-            <div className={`invoice-status-tag ${isPaid ? 'is-paid' : 'is-pending'}`}>
-              <span className="status-dot-sm" />
-              {isPaid ? 'PAGADA' : 'PENDIENTE DE PAGO'}
+          <div className="invoice-meta-card">
+            <span className="invoice-type-label">FACTURA DE VENTA</span>
+            <div className="invoice-correlative-num">{invoice.number}</div>
+
+            <div className={`invoice-status-pill ${isPaid ? 'status-paid' : 'status-pending'}`}>
+              <span className="status-dot-inner" />
+              <span>{isPaid ? 'PAGADA' : 'PENDIENTE DE PAGO'}</span>
             </div>
 
-            <div className="invoice-dates">
-              <div>
-                <span>Emisión:</span>
-                <strong>{formatDate(invoice.issueDate)}</strong>
+            <div className="meta-dates-grid">
+              <div className="date-item">
+                <span className="date-lbl">Emisión:</span>
+                <strong className="date-val">{formatDate(invoice.issueDate)}</strong>
               </div>
               {invoice.dueDate && (
-                <div>
-                  <span>Vencimiento:</span>
-                  <strong>{formatDate(invoice.dueDate)}</strong>
+                <div className="date-item">
+                  <span className="date-lbl">Vence:</span>
+                  <strong className="date-val">{formatDate(invoice.dueDate)}</strong>
                 </div>
               )}
             </div>
           </div>
         </header>
 
-        {/* DATOS DE LAS PARTES (EMISOR Y RECEPTOR) */}
-        <div className="invoice-parties-grid">
-          <div className="party-card party-issuer">
-            <span className="party-label">EMISOR (PROVEEDOR)</span>
-            <strong className="party-name">{invoice.issuer.name}</strong>
-            <p><strong>NIT/RUC:</strong> {invoice.issuer.taxId}</p>
-            {invoice.issuer.email && <p><strong>Email:</strong> {invoice.issuer.email}</p>}
-            {invoice.issuer.phone && <p><strong>Tel:</strong> {invoice.issuer.phone}</p>}
-            {invoice.issuer.address && <p><strong>Dir:</strong> {invoice.issuer.address}</p>}
+        {/* BLOQUE DE EMISOR Y RECEPTOR */}
+        <div className="parties-comparison-grid">
+          <div className="party-box party-box-issuer">
+            <span className="party-role-tag">EMISOR (PROVEEDOR)</span>
+            <strong className="party-title">{invoice.issuer.name}</strong>
+            <div className="party-meta-rows">
+              <span>NIT / RUC: <strong>{invoice.issuer.taxId}</strong></span>
+              {invoice.issuer.email && <span>Email: {invoice.issuer.email}</span>}
+              {invoice.issuer.phone && <span>Teléfono: {invoice.issuer.phone}</span>}
+              {invoice.issuer.address && <span>Dirección: {invoice.issuer.address}</span>}
+            </div>
           </div>
 
-          <div className="party-card party-client">
-            <span className="party-label">FACTURAR A (CLIENTE)</span>
-            <strong className="party-name">{invoice.client.name}</strong>
-            {invoice.client.taxId && <p><strong>NIT/ID:</strong> {invoice.client.taxId}</p>}
-            {invoice.client.email && <p><strong>Email:</strong> {invoice.client.email}</p>}
-            {invoice.client.phone && <p><strong>Tel:</strong> {invoice.client.phone}</p>}
-            {invoice.client.address && <p><strong>Dir:</strong> {invoice.client.address}</p>}
+          <div className="party-box party-box-client">
+            <span className="party-role-tag">FACTURADO A (CLIENTE)</span>
+            <strong className="party-title">{invoice.client.name}</strong>
+            <div className="party-meta-rows">
+              {invoice.client.taxId && <span>NIT / ID: <strong>{invoice.client.taxId}</strong></span>}
+              {invoice.client.email && <span>Email: {invoice.client.email}</span>}
+              {invoice.client.phone && <span>Teléfono: {invoice.client.phone}</span>}
+              {invoice.client.address && <span>Dirección: {invoice.client.address}</span>}
+            </div>
           </div>
         </div>
 
-        {/* TABLA DE CONCEPTOS FACTURADOS */}
-        <table className="invoice-table">
-          <thead>
-            <tr>
-              <th style={{ width: '40px' }}>#</th>
-              <th>Descripción del Concepto / Servicio</th>
-              <th style={{ width: '70px', textAlign: 'center' }}>Cant.</th>
-              <th style={{ width: '120px', textAlign: 'right' }}>Precio Unit.</th>
-              <th style={{ width: '120px', textAlign: 'right' }}>Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {invoice.items.map((item, idx) => {
-              const sub = calculateItemSubtotal(item.quantity, item.price)
-              return (
-                <tr key={item.id || idx}>
-                  <td className="cell-muted" style={{ textAlign: 'center' }}>
-                    {String(idx + 1).padStart(2, '0')}
-                  </td>
-                  <td className="cell-description">
-                    <strong>{item.description}</strong>
-                  </td>
-                  <td style={{ textAlign: 'center' }}>{item.quantity}</td>
-                  <td style={{ textAlign: 'right' }}>{formatCurrency(item.price)}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 600 }}>
-                    {formatCurrency(sub)}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+        {/* TABLA DE PRODUCTOS / SERVICIOS */}
+        <div className="table-responsive-wrapper">
+          <table className="official-table">
+            <thead>
+              <tr>
+                <th style={{ width: '45px', textAlign: 'center' }}>#</th>
+                <th>Descripción del Concepto / Servicio</th>
+                <th style={{ width: '80px', textAlign: 'center' }}>Cant.</th>
+                <th style={{ width: '130px', textAlign: 'right' }}>Precio Unit.</th>
+                <th style={{ width: '130px', textAlign: 'right' }}>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {invoice.items.map((item, index) => {
+                const itemSub = calculateItemSubtotal(item.quantity, item.price)
+                return (
+                  <tr key={item.id || index}>
+                    <td style={{ textAlign: 'center' }} className="td-index">
+                      {String(index + 1).padStart(2, '0')}
+                    </td>
+                    <td className="td-desc">
+                      <strong>{item.description}</strong>
+                    </td>
+                    <td style={{ textAlign: 'center' }} className="td-qty">
+                      {item.quantity}
+                    </td>
+                    <td style={{ textAlign: 'right' }} className="td-price">
+                      {formatCurrency(item.price)}
+                    </td>
+                    <td style={{ textAlign: 'right' }} className="td-subtotal">
+                      {formatCurrency(itemSub)}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
 
-        {/* SECCIÓN INFERIOR: NOTAS Y TOTALES */}
-        <div className="invoice-bottom-layout">
-          <div className="invoice-notes-block">
+        {/* SECCIÓN INFERIOR: CONDICIONES Y LIQUIDACIÓN DE TOTALES */}
+        <div className="invoice-footer-layout">
+          <div className="terms-and-notes-box">
             {invoice.notes && (
-              <div className="notes-box">
-                <span className="notes-heading">Términos y Observaciones:</span>
-                <p>{invoice.notes}</p>
+              <div className="notes-content-wrap">
+                <span className="notes-box-title">Instrucciones y Condiciones de Pago:</span>
+                <p className="notes-text">{invoice.notes}</p>
               </div>
             )}
-            <div className="invoice-compliance-note">
-              <p>Este documento constituye un comprobante digital oficial de cobro emitido bajo las normas contables vigentes.</p>
-              <small>Emitido mediante el sistema interno de facturación · TechStore S.A.</small>
+
+            <div className="legal-disclaimer">
+              <p>Comprobante de emisión digital interna para control administrativo y comercial.</p>
+              <small>Generado con el Sistema de Facturación QUARTER · Todos los derechos reservados.</small>
             </div>
           </div>
 
-          <div className="invoice-totals-box">
-            <div className="totals-row">
-              <span>Subtotal Neto:</span>
-              <span>{formatCurrency(totals.subtotal)}</span>
+          <div className="totals-calculation-card">
+            <div className="calc-row">
+              <span className="calc-label">Subtotal Imponible:</span>
+              <span className="calc-amount">{formatCurrency(totals.subtotal)}</span>
             </div>
-            <div className="totals-row">
-              <span>Impuesto IVA ({invoice.taxRate}%):</span>
-              <span>{formatCurrency(totals.taxAmount)}</span>
+
+            <div className="calc-row">
+              <span className="calc-label">Impuesto IVA ({invoice.taxRate}%):</span>
+              <span className="calc-amount">{formatCurrency(totals.taxAmount)}</span>
             </div>
-            <div className="totals-row grand-total-row">
-              <span>TOTAL A PAGAR:</span>
-              <strong className="grand-total-amount">
-                {formatCurrency(totals.total)}
-              </strong>
+
+            <div className="calc-divider" />
+
+            <div className="calc-row grand-total-highlight">
+              <span className="grand-label">TOTAL FACTURADO:</span>
+              <strong className="grand-amount">{formatCurrency(totals.total)}</strong>
             </div>
-            <div className="currency-note">Valores expresados en USD ($)</div>
+
+            <div className="currency-disclaimer">Valores expresados en Dólares (USD $)</div>
           </div>
         </div>
 
-        {/* PIE DE PÁGINA IMPRESIÓN */}
-        <footer className="invoice-print-footer">
-          <span>{invoice.issuer.name} · Factura Nº {invoice.number} · Hoja 1 de 1</span>
-          <span>Impreso el {new Date().toLocaleDateString('es-ES')}</span>
+        {/* PIE PARA IMPRESIÓN OFICIAL */}
+        <footer className="print-only-footer">
+          <span>{invoice.issuer.name} · Factura Nº {invoice.number}</span>
+          <span>Página 1 de 1 · Fecha de impresión: {new Date().toLocaleDateString('es-ES')}</span>
         </footer>
       </article>
     </section>

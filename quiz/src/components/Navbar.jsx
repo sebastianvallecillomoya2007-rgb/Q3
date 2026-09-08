@@ -3,50 +3,83 @@
  * @param {{
  *   onNewInvoice: () => void,
  *   onResetDemo: () => void,
- *   invoiceCount: number
+ *   invoiceCount: number,
+ *   activeView: string,
+ *   onViewChange: (view: string) => void
  * }} props
  */
-export function Navbar({ onNewInvoice, onResetDemo, invoiceCount }) {
+export function Navbar({ onNewInvoice, onResetDemo, invoiceCount, activeView, onViewChange }) {
   const currentDate = new Intl.DateTimeFormat('es-ES', {
-    weekday: 'long',
     day: 'numeric',
-    month: 'long',
+    month: 'short',
     year: 'numeric',
   }).format(new Date())
 
   return (
     <header className="topbar">
-      <div className="logo-lockup">
-        <div className="logo">
-          Q<span>3</span>
+      <div className="topbar-left">
+        <div className="logo-lockup" onClick={() => onViewChange('overview')} role="button" tabIndex={0} style={{ cursor: 'pointer' }}>
+          <div className="logo">
+            <span>Q</span>3
+          </div>
+          <div>
+            <div className="brand-title">
+              <strong>QUARTER</strong>
+              <span className="brand-badge-pill">BILLING</span>
+            </div>
+            <small>TechStore S.A. · Herramienta Interna</small>
+          </div>
         </div>
-        <div>
-          <strong>QUARTER BILLING</strong>
-          <small>SISTEMA DE FACTURACIÓN INTERNA</small>
-        </div>
+
+        {/* SELECTOR DE VISTAS (PESTAÑAS DEL SISTEMA) */}
+        <nav className="view-switcher" aria-label="Modo de visualización">
+          <button
+            type="button"
+            className={`view-tab ${activeView === 'overview' ? 'active' : ''}`}
+            onClick={() => onViewChange('overview')}
+          >
+            📋 Facturas & Historial
+            <span className="tab-count">{invoiceCount}</span>
+          </button>
+          <button
+            type="button"
+            className={`view-tab ${activeView === 'form' ? 'active' : ''}`}
+            onClick={() => onViewChange('form')}
+          >
+            ✍️ Nueva Emisión
+          </button>
+          <button
+            type="button"
+            className={`view-tab ${activeView === 'split' ? 'active' : ''}`}
+            onClick={() => onViewChange('split')}
+            title="Mostrar Formulario, Historial y Vista Previa al mismo tiempo"
+          >
+            ⊞ Vista Dividida
+          </button>
+        </nav>
       </div>
 
-      <div className="topbar-center">
-        <span className="status">
-          <span className="status-dot" /> Sistema activo · {currentDate} ({invoiceCount} {invoiceCount === 1 ? 'factura' : 'facturas'})
+      <div className="topbar-right">
+        <span className="status-indicator">
+          <span className="status-dot" />
+          <span>Activo · {currentDate}</span>
         </span>
-      </div>
 
-      <div className="topbar-actions">
         <button
           type="button"
-          className="button button-soft button-sm"
+          className="button button-outline button-sm"
           onClick={onResetDemo}
-          title="Restablece los datos de ejemplo iniciales"
+          title="Restablece los datos iniciales de demostración"
         >
-          ↻ Datos Demo
+          ↻ Reset Demo
         </button>
+
         <button
           type="button"
           className="button button-primary button-sm"
           onClick={onNewInvoice}
         >
-          + Nueva Factura
+          <span>+ Nueva Factura</span>
         </button>
       </div>
     </header>

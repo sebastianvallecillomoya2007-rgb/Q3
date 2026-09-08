@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useLocalStorage } from './hooks/useLocalStorage'
-import { INITIAL_INVOICES, DEFAULT_COMPANY } from './data/initialData'
+import { INITIAL_INVOICES } from './data/initialData'
 import { generateNextInvoiceNumber } from './utils/formatters'
 import { Navbar } from './components/Navbar'
 import { StatsBar } from './components/StatsBar'
@@ -11,12 +11,12 @@ import { Toast } from './components/Toast'
 import './App.css'
 
 function App() {
-  const [invoices, setInvoices] = useLocalStorage('qu3_invoices_v2', INITIAL_INVOICES)
+  const [invoices, setInvoices] = useLocalStorage('qu3_invoices_v3', INITIAL_INVOICES)
   const [selectedId, setSelectedId] = useState(() => {
     return invoices.length > 0 ? invoices[0].id : null
   })
+  const [activeView, setActiveView] = useState('overview') // 'overview' (List + Preview) | 'form' | 'split'
   const [toast, setToast] = useState(null)
-  const formRef = useRef(null)
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
@@ -32,7 +32,8 @@ function App() {
   const handleCreateInvoice = (newInvoice) => {
     setInvoices((prev) => [newInvoice, ...prev])
     setSelectedId(newInvoice.id)
-    showToast(`¡Factura ${newInvoice.number} emitida y guardada con éxito!`, 'success')
+    setActiveView('overview') // Cambiar inmediatamente a vista previa oficial
+    showToast(`¡Factura ${newInvoice.number} emitida y registrada correctamente!`, 'success')
   }
 
   // Alternar estado de pago (Pagada / Pendiente)
@@ -48,7 +49,7 @@ function App() {
       })
     )
     showToast(
-      `Factura actualizada a estado: ${newStatus === 'paid' ? 'Pagada ✓' : 'Pendiente ⏳'}`,
+      `Factura actualizada: ${newStatus === 'paid' ? 'Marcada como Pagada ✓' : 'Marcada como Pendiente ⏳'}`,
       'info'
     )
   }
@@ -71,7 +72,8 @@ function App() {
 
     setInvoices((prev) => [cloned, ...prev])
     setSelectedId(cloned.id)
-    showToast(`Factura duplicada correctamente como ${cloned.number}`, 'success')
+    setActiveView('overview')
+    showToast(`Factura duplicada con éxito bajo el correlativo ${cloned.number}`, 'success')
   }
 
   // Eliminar factura
@@ -81,7 +83,7 @@ function App() {
     if (selectedId === id) {
       setSelectedId(remaining.length > 0 ? remaining[0].id : null)
     }
-    showToast('Factura eliminada del registro.', 'warning')
+    showToast('Factura eliminada del historial.', 'warning')
   }
 
   // Restablecer datos de ejemplo
@@ -89,17 +91,14 @@ function App() {
     if (window.confirm('¿Deseas restablecer las facturas de demostración iniciales?')) {
       setInvoices(INITIAL_INVOICES)
       setSelectedId(INITIAL_INVOICES[0].id)
+      setActiveView('overview')
       showToast('Datos de demostración restablecidos.', 'info')
     }
   }
 
-  // Scroll suave al formulario al hacer clic en "+ Nueva Factura"
-  const handleScrollToForm = () => {
-    if (formRef.current) {
-      formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      const firstInput = formRef.current.querySelector('input')
-      if (firstInput) firstInput.focus()
-    }
+  const handleOpenNewInvoice = () => {
+    setActiveView('form')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   return (
@@ -115,60 +114,121 @@ function App() {
 
       {/* BARRA SUPERIOR DE NAVEGACIÓN */}
       <Navbar
-        onNewInvoice={handleScrollToForm}
+        onNewInvoice={handleOpenNewInvoice}
         onResetDemo={handleResetDemo}
         invoiceCount={invoices.length}
+        activeView={activeView}
+        onViewChange={setActiveView}
       />
 
-      {/* SECCIÓN HERO / INTRO */}
-      <section className="intro">
-        <div className="intro-content">
-          <p className="eyebrow">HERRAMIENTA EMPRESARIAL · GESTIÓN DE COBROS</p>
-          <h1>
-            Emisión y Control de <em>Facturas</em>
-          </h1>
-          <p className="intro-copy">
-            Ingresa los datos de tu comprobante, calcula impuestos y subtotales en tiempo real,
-            organiza el historial de cobros y genera comprobantes profesionales listos para imprimir o exportar.
-          </p>
+      {/* CABECERA RESUMIDA Y MÉTRICAS FINANCIERAS */}
+      <section className="dashboard-hero">
+        <div className="hero-top-info">
+          <div>
+            <div className="hero-badge">HERRAMIENTA EMPRESARIAL</div>
+            <h1 className="hero-heading">
+              Panel de Control y <em>Facturación</em>
+            </h1>
+            <p className="hero-desc">
+              Emite comprobantes en minutos con cálculo automático de impuestos, administra el historial de cobranzas y visualiza facturas oficiales listas para imprimir.
+            </p>
+          </div>
+
+          <div className="hero-quick-actions">
+            <button
+              type="button"
+              className={`hero-action-tab ${activeView === 'overview' ? 'active' : ''}`}
+              onClick={() => setActiveView('overview')}
+            >
+              📋 Ver Historial y Facturas
+            </button>
+            <button
+              type="button"
+              className={`hero-action-tab ${activeView === 'form' ? 'active' : ''}`}
+              onClick={() => setActiveView('form')}
+            >
+              ✍️ Emitir Nueva Factura
+            </button>
+          </div>
         </div>
 
         {/* MÉTRICAS FINANCIERAS RESUMIDAS */}
         <StatsBar invoices={invoices} />
       </section>
 
-      {/* ÁREA DE TRABAJO PRINCIPAL: FORMULARIO, LISTA Y VISTA PREVIA */}
-      <div className="workspace">
-        {/* COLUMNA 1: FORMULARIO DE FACTURACIÓN */}
-        <div className="workspace-column column-form" ref={formRef}>
-          <InvoiceForm
-            key={suggestedNumber}
-            onCreate={handleCreateInvoice}
-            suggestedNumber={suggestedNumber}
-            defaultCompany={DEFAULT_COMPANY}
-          />
-        </div>
+      {/* CONTENEDOR DEL ESPACIO DE TRABAJO */}
+      <main className="main-content-container">
+        {/* VISTA 1: OVERVIEW (HISTORIAL + VISTA PREVIA MASTER-DETAIL) */}
+        {activeView === 'overview' && (
+          <div className="workspace-master-detail">
+            <div className="workspace-left-col">
+              <InvoiceList
+                invoices={invoices}
+                selectedId={selectedId}
+                onSelect={(id) => {
+                  setSelectedId(id)
+                }}
+                onDelete={handleDeleteInvoice}
+                onCreateNewClick={handleOpenNewInvoice}
+              />
+            </div>
 
-        {/* COLUMNA 2: HISTORIAL Y LISTA DE FACTURAS */}
-        <div className="workspace-column column-list">
-          <InvoiceList
-            invoices={invoices}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            onDelete={handleDeleteInvoice}
-          />
-        </div>
+            <div className="workspace-right-col">
+              <InvoicePreview
+                invoice={selectedInvoice}
+                onToggleStatus={handleToggleStatus}
+                onDuplicate={handleDuplicateInvoice}
+                onDelete={handleDeleteInvoice}
+                onEditClick={handleOpenNewInvoice}
+              />
+            </div>
+          </div>
+        )}
 
-        {/* COLUMNA 3: VISTA PREVIA IMPRIMIBLE PROFESIONAL */}
-        <div className="workspace-column column-preview">
-          <InvoicePreview
-            invoice={selectedInvoice}
-            onToggleStatus={handleToggleStatus}
-            onDuplicate={handleDuplicateInvoice}
-            onDelete={handleDeleteInvoice}
-          />
-        </div>
-      </div>
+        {/* VISTA 2: FORM (EMISIÓN ENFOCADA Y AMPLIA) */}
+        {activeView === 'form' && (
+          <div className="workspace-focused-form">
+            <InvoiceForm
+              key={suggestedNumber}
+              onCreate={handleCreateInvoice}
+              suggestedNumber={suggestedNumber}
+              onCancel={() => setActiveView('overview')}
+            />
+          </div>
+        )}
+
+        {/* VISTA 3: SPLIT (TODO VISIBLE EN 3 COLUMNAS) */}
+        {activeView === 'split' && (
+          <div className="workspace-split-three">
+            <div className="col-split col-form">
+              <InvoiceForm
+                key={suggestedNumber}
+                onCreate={handleCreateInvoice}
+                suggestedNumber={suggestedNumber}
+              />
+            </div>
+
+            <div className="col-split col-list">
+              <InvoiceList
+                invoices={invoices}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onDelete={handleDeleteInvoice}
+                onCreateNewClick={handleOpenNewInvoice}
+              />
+            </div>
+
+            <div className="col-split col-preview">
+              <InvoicePreview
+                invoice={selectedInvoice}
+                onToggleStatus={handleToggleStatus}
+                onDuplicate={handleDuplicateInvoice}
+                onDelete={handleDeleteInvoice}
+              />
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   )
 }

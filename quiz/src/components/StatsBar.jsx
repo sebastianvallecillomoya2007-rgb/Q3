@@ -31,28 +31,58 @@ export function StatsBar({ invoices = [] }) {
     }
   )
 
+  const avgTicket = stats.count > 0 ? stats.totalBilled / stats.count : 0
+
   return (
-    <section className="stats-container">
+    <section className="stats-container" aria-label="Métricas de facturación">
       <div className="stat-card stat-total">
-        <span className="stat-label">Total Facturado</span>
+        <div className="stat-header">
+          <span className="stat-label">Total Facturado</span>
+          <span className="stat-icon-badge">📊</span>
+        </div>
         <strong className="stat-value">{formatCurrency(stats.totalBilled)}</strong>
-        <span className="stat-detail">{stats.count} facturas emitidas</span>
+        <span className="stat-detail">
+          <strong>{stats.count}</strong> {stats.count === 1 ? 'comprobante emitido' : 'comprobantes emitidos'}
+        </span>
       </div>
 
       <div className="stat-card stat-paid">
-        <span className="stat-label">Total Recaudado (Pagadas)</span>
+        <div className="stat-header">
+          <span className="stat-label">Total Cobrado</span>
+          <span className="stat-icon-badge paid-badge">✓</span>
+        </div>
         <strong className="stat-value stat-value-paid">
           {formatCurrency(stats.paidAmount)}
         </strong>
-        <span className="stat-detail">{stats.paidCount} comprobantes liquidados</span>
+        <span className="stat-detail">
+          <strong>{stats.paidCount}</strong> facturas liquidadas
+        </span>
       </div>
 
       <div className="stat-card stat-pending">
-        <span className="stat-label">Por Recaudar (Pendientes)</span>
+        <div className="stat-header">
+          <span className="stat-label">Por Cobrar (Pendiente)</span>
+          <span className="stat-icon-badge pending-badge">⏳</span>
+        </div>
         <strong className="stat-value stat-value-pending">
           {formatCurrency(stats.pendingAmount)}
         </strong>
-        <span className="stat-detail">{stats.pendingCount} facturas por cobrar</span>
+        <span className="stat-detail">
+          <strong>{stats.pendingCount}</strong> facturas por cobrar
+        </span>
+      </div>
+
+      <div className="stat-card stat-avg">
+        <div className="stat-header">
+          <span className="stat-label">Ticket Promedio</span>
+          <span className="stat-icon-badge avg-badge">📈</span>
+        </div>
+        <strong className="stat-value">
+          {formatCurrency(avgTicket)}
+        </strong>
+        <span className="stat-detail">
+          Promedio por factura
+        </span>
       </div>
     </section>
   )

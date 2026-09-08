@@ -8,19 +8,22 @@ import { calculateInvoiceTotals } from '../utils/calculations'
  *   invoices: Array<any>,
  *   selectedId: string,
  *   onSelect: (id: string) => void,
- *   onDelete: (id: string) => void
+ *   onDelete: (id: string) => void,
+ *   onCreateNewClick?: () => void
  * }} props
  */
-export function InvoiceList({ invoices, selectedId, onSelect, onDelete }) {
+export function InvoiceList({ invoices, selectedId, onSelect, onDelete, onCreateNewClick }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'paid' | 'pending'
 
   const filteredInvoices = useMemo(() => {
     return invoices.filter((inv) => {
+      const term = searchTerm.toLowerCase().trim()
       const matchesSearch =
-        inv.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        inv.client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (inv.client.taxId && inv.client.taxId.toLowerCase().includes(searchTerm.toLowerCase()))
+        !term ||
+        inv.number.toLowerCase().includes(term) ||
+        inv.client.name.toLowerCase().includes(term) ||
+        (inv.client.taxId && inv.client.taxId.toLowerCase().includes(term))
 
       const matchesStatus =
         statusFilter === 'all' ? true : inv.status === statusFilter
@@ -32,86 +35,101 @@ export function InvoiceList({ invoices, selectedId, onSelect, onDelete }) {
   const handleDelete = (e, id, number) => {
     e.stopPropagation()
     const confirmDelete = window.confirm(
-      `¿Estás seguro de que deseas eliminar la factura ${number}? Esta acción no se puede deshacer.`
+      `¿Deseas eliminar la factura ${number}? Esta acción no se puede deshacer.`
     )
     if (confirmDelete) {
       onDelete(id)
     }
   }
 
+  const paidCount = invoices.filter((i) => i.status === 'paid').length
+  const pendingCount = invoices.filter((i) => i.status === 'pending').length
+
   return (
-    <aside className="list-panel">
-      {/* CABECERA DEL PANEL */}
-      <div className="list-title">
+    <aside className="list-panel-modern">
+      {/* CABECERA DEL LISTADO */}
+      <div className="list-panel-header">
         <div>
-          <p className="eyebrow">REGISTRO CONTABLE</p>
-          <h2>Historial de Facturas</h2>
+          <span className="list-eyebrow">REGISTRO DE COBROS</span>
+          <h2 className="list-panel-title">Historial de Facturas</h2>
         </div>
-        <span className="count-badge" title="Total facturas registradas">
-          {filteredInvoices.length} / {invoices.length}
+        <span className="list-counter-badge" title="Mostrando / Total">
+          {filteredInvoices.length} de {invoices.length}
         </span>
       </div>
 
-      {/* BARRA DE BÚSQUEDA Y FILTROS */}
-      <div className="list-controls">
-        <div className="search-box">
-          <span className="search-icon">🔍</span>
+      {/* BUSCADOR Y FILTROS SEGMENTADOS */}
+      <div className="list-filter-bar">
+        <div className="search-input-wrapper">
+          <span className="search-svg-icon">🔍</span>
           <input
             type="text"
-            placeholder="Buscar por Nº o cliente..."
+            placeholder="Buscar por Nº de factura, cliente o NIT..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
+            className="search-field"
           />
           {searchTerm && (
             <button
               type="button"
-              className="search-clear-btn"
+              className="search-clear-action"
               onClick={() => setSearchTerm('')}
+              title="Borrar búsqueda"
             >
               ×
             </button>
           )}
         </div>
 
-        <div className="filter-chips">
+        {/* BOTONES DE FILTRADO POR ESTADO */}
+        <div className="filter-segmented-control">
           <button
             type="button"
-            className={`filter-chip ${statusFilter === 'all' ? 'active' : ''}`}
+            className={`filter-btn ${statusFilter === 'all' ? 'active' : ''}`}
             onClick={() => setStatusFilter('all')}
           >
-            Todas ({invoices.length})
+            Todas <span className="filter-pill-count">{invoices.length}</span>
           </button>
           <button
             type="button"
-            className={`filter-chip ${statusFilter === 'paid' ? 'active' : ''}`}
+            className={`filter-btn ${statusFilter === 'paid' ? 'active' : ''}`}
             onClick={() => setStatusFilter('paid')}
           >
-            Pagadas ({invoices.filter((i) => i.status === 'paid').length})
+            Pagadas <span className="filter-pill-count count-paid">{paidCount}</span>
           </button>
           <button
             type="button"
-            className={`filter-chip ${statusFilter === 'pending' ? 'active' : ''}`}
+            className={`filter-btn ${statusFilter === 'pending' ? 'active' : ''}`}
             onClick={() => setStatusFilter('pending')}
           >
-            Pendientes ({invoices.filter((i) => i.status === 'pending').length})
+            Pendientes <span className="filter-pill-count count-pending">{pendingCount}</span>
           </button>
         </div>
       </div>
 
-      {/* LISTA DE FACTURAS */}
+      {/* LISTA DE TARJETAS */}
       {filteredInvoices.length === 0 ? (
-        <div className="empty-state">
-          <span className="empty-icon">∅</span>
-          <p>No se encontraron facturas</p>
-          <small>
+        <div className="empty-results-box">
+          <span className="empty-box-icon">📂</span>
+          <h3>Sin facturas coincidentes</h3>
+          <p>
             {searchTerm || statusFilter !== 'all'
-              ? 'Prueba con otros términos de búsqueda o filtros.'
-              : 'Las facturas que emitas aparecerán aquí organizadas.'}
-          </small>
+              ? 'No se encontraron resultados con los filtros actuales.'
+              : 'Aún no hay facturas registradas.'}
+          </p>
+          {onCreateNewClick && (
+            <button
+              type="button"
+              className="button button-primary button-sm"
+              onClick={onCreateNewClick}
+              style={{ marginTop: '12px' }}
+            >
+              + Emitir primera factura
+            </button>
+          )}
         </div>
       ) : (
-        <div className="invoice-list-items">
+        <div className="invoice-cards-scroll">
           {filteredInvoices.map((inv) => {
             const totals = calculateInvoiceTotals(inv.items, inv.taxRate)
             const isSelected = selectedId === inv.id
@@ -122,7 +140,7 @@ export function InvoiceList({ invoices, selectedId, onSelect, onDelete }) {
                 key={inv.id}
                 role="button"
                 tabIndex={0}
-                className={`invoice-list-card ${isSelected ? 'is-selected' : ''}`}
+                className={`invoice-item-card ${isSelected ? 'selected' : ''}`}
                 onClick={() => onSelect(inv.id)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -131,39 +149,40 @@ export function InvoiceList({ invoices, selectedId, onSelect, onDelete }) {
                   }
                 }}
               >
-                <div className="invoice-card-main">
-                  <div className="invoice-card-header">
-                    <strong className="invoice-card-number">{inv.number}</strong>
-                    <span
-                      className={`status-pill ${isPaid ? 'pill-paid' : 'pill-pending'}`}
-                    >
-                      {isPaid ? 'Pagada' : 'Pendiente'}
-                    </span>
+                <div className="card-top-row">
+                  <div className="card-number-tag">
+                    <span className="card-doc-icon">📄</span>
+                    <strong>{inv.number}</strong>
                   </div>
-
-                  <p className="invoice-card-client" title={inv.client.name}>
-                    {inv.client.name}
-                  </p>
-
-                  <div className="invoice-card-footer">
-                    <span className="invoice-card-date">
-                      {formatDate(inv.issueDate)}
-                    </span>
-                    <strong className="invoice-card-total">
-                      {formatCurrency(totals.total)}
-                    </strong>
-                  </div>
+                  <span className={`status-badge-pill ${isPaid ? 'status-paid' : 'status-pending'}`}>
+                    <span className="badge-dot" />
+                    {isPaid ? 'Pagada' : 'Pendiente'}
+                  </span>
                 </div>
 
-                <button
-                  type="button"
-                  className="invoice-card-delete-btn"
-                  title="Eliminar factura"
-                  onClick={(e) => handleDelete(e, inv.id, inv.number)}
-                  aria-label={`Eliminar factura ${inv.number}`}
-                >
-                  🗑
-                </button>
+                <div className="card-client-name" title={inv.client.name}>
+                  {inv.client.name}
+                </div>
+
+                <div className="card-bottom-row">
+                  <span className="card-date">
+                    📅 {formatDate(inv.issueDate)}
+                  </span>
+                  <div className="card-price-action">
+                    <strong className="card-total-amount">
+                      {formatCurrency(totals.total)}
+                    </strong>
+                    <button
+                      type="button"
+                      className="card-delete-icon"
+                      title="Eliminar factura"
+                      onClick={(e) => handleDelete(e, inv.id, inv.number)}
+                      aria-label={`Eliminar ${inv.number}`}
+                    >
+                      🗑
+                    </button>
+                  </div>
+                </div>
               </div>
             )
           })}

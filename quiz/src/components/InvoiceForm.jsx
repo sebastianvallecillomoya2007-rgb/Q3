@@ -3,16 +3,10 @@ import { calculateInvoiceTotals, calculateItemSubtotal } from '../utils/calculat
 import { formatCurrency } from '../utils/formatters'
 import { DEFAULT_COMPANY } from '../data/initialData'
 
-/**
- * Devuelve la fecha de hoy en formato YYYY-MM-DD.
- */
 function getTodayDate() {
   return new Date().toISOString().slice(0, 10)
 }
 
-/**
- * Devuelve una fecha sumando N días a hoy en formato YYYY-MM-DD.
- */
 function getDefaultDueDate(daysAhead = 15) {
   const d = new Date()
   d.setDate(d.getDate() + daysAhead)
@@ -29,13 +23,14 @@ function createEmptyItem() {
 }
 
 /**
- * Formulario para creación de facturas.
+ * Formulario profesional de emisión de facturas.
  * @param {{
  *   onCreate: (invoice: any) => void,
- *   suggestedNumber: string
+ *   suggestedNumber: string,
+ *   onCancel?: () => void
  * }} props
  */
-export function InvoiceForm({ onCreate, suggestedNumber }) {
+export function InvoiceForm({ onCreate, suggestedNumber, onCancel }) {
   const [formData, setFormData] = useState({
     number: suggestedNumber || 'FAC-0001',
     issueDate: getTodayDate(),
@@ -59,18 +54,16 @@ export function InvoiceForm({ onCreate, suggestedNumber }) {
     items: [
       { id: crypto.randomUUID(), description: '', quantity: 1, price: '' },
     ],
-    notes: 'Gracias por su preferencia. Pago mediante transferencia bancaria.',
+    notes: 'Pago recibido oportunamente mediante transferencia bancaria. ¡Gracias por su compra!',
   })
 
   const [useDefaultCompany, setUseDefaultCompany] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
 
-  // Manejadores de cambios en campos directos
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  // Manejador para datos de emisor
   const handleIssuerChange = (field, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -78,7 +71,6 @@ export function InvoiceForm({ onCreate, suggestedNumber }) {
     }))
   }
 
-  // Manejador para datos de cliente
   const handleClientChange = (field, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -86,7 +78,6 @@ export function InvoiceForm({ onCreate, suggestedNumber }) {
     }))
   }
 
-  // Alternar carga de datos de la empresa
   const handleToggleDefaultCompany = (e) => {
     const isChecked = e.target.checked
     setUseDefaultCompany(isChecked)
@@ -104,7 +95,6 @@ export function InvoiceForm({ onCreate, suggestedNumber }) {
     }
   }
 
-  // Manejo de ítems
   const handleItemChange = (id, field, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -130,7 +120,6 @@ export function InvoiceForm({ onCreate, suggestedNumber }) {
     }))
   }
 
-  // Restablecer formulario
   const handleReset = () => {
     setFormData({
       number: suggestedNumber || 'FAC-0001',
@@ -153,28 +142,26 @@ export function InvoiceForm({ onCreate, suggestedNumber }) {
         address: '',
       },
       items: [createEmptyItem()],
-      notes: 'Gracias por su preferencia.',
+      notes: 'Pago recibido oportunamente mediante transferencia bancaria.',
     })
     setUseDefaultCompany(true)
     setErrorMessage('')
   }
 
-  // Enviar formulario
   const handleSubmit = (e) => {
     e.preventDefault()
     setErrorMessage('')
 
-    // Validaciones
     if (!formData.number.trim()) {
-      setErrorMessage('Por favor ingresa un número de factura válido.')
+      setErrorMessage('Ingresa un número de factura válido (ej. FAC-0001).')
       return
     }
     if (!formData.issuer.name.trim() || !formData.issuer.taxId.trim()) {
-      setErrorMessage('Los datos del emisor (nombre e identificación fiscal) son requeridos.')
+      setErrorMessage('Los datos del emisor (Razón social y NIT/RUC) son obligatorios.')
       return
     }
     if (!formData.client.name.trim() || !formData.client.email.trim()) {
-      setErrorMessage('Los datos del cliente (nombre y correo electrónico) son requeridos.')
+      setErrorMessage('Los datos del cliente (Nombre y Correo electrónico) son requeridos.')
       return
     }
 
@@ -188,7 +175,7 @@ export function InvoiceForm({ onCreate, suggestedNumber }) {
 
     if (hasInvalidItem) {
       setErrorMessage(
-        'Todos los productos o servicios deben tener descripción, cantidad mayor a 0 y precio válido.'
+        'Todos los productos o servicios deben tener descripción, cantidad mayor a 0 y precio unitario válido.'
       )
       return
     }
@@ -224,57 +211,72 @@ export function InvoiceForm({ onCreate, suggestedNumber }) {
     }
 
     onCreate(sanitizedInvoice)
-
-    // Resetear manteniendo datos del emisor
-    setFormData((prev) => ({
-      ...prev,
-      client: { name: '', taxId: '', email: '', phone: '', address: '' },
-      items: [createEmptyItem()],
-      notes: 'Gracias por su preferencia.',
-    }))
   }
 
   const liveTotals = calculateInvoiceTotals(formData.items, formData.taxRate)
 
   return (
-    <form className="form-panel" onSubmit={handleSubmit} noValidate>
-      <div className="form-header-bar">
+    <form className="form-panel-modern" onSubmit={handleSubmit} noValidate>
+      {/* CABECERA DEL FORMULARIO */}
+      <div className="form-card-header">
         <div>
-          <span className="step-badge">NUEVA EMISIÓN</span>
-          <h2 className="panel-title">Emisión de Factura</h2>
+          <div className="form-title-badge">
+            <span className="badge-bullet" />
+            <span>NUEVA EMISIÓN</span>
+          </div>
+          <h2 className="form-main-title">Formulario de Facturación</h2>
+          <p className="form-subtitle">
+            Completa la información tributaria, datos del cliente y los conceptos a facturar.
+          </p>
         </div>
-        <button
-          type="button"
-          className="button-link"
-          onClick={handleReset}
-          title="Limpiar formulario"
-        >
-          Limpiar campos
-        </button>
+
+        <div className="form-header-actions">
+          <button
+            type="button"
+            className="button button-outline button-sm"
+            onClick={handleReset}
+            title="Limpiar formulario"
+          >
+            Limpiar Campos
+          </button>
+          {onCancel && (
+            <button
+              type="button"
+              className="button button-soft button-sm"
+              onClick={onCancel}
+            >
+              Cerrar
+            </button>
+          )}
+        </div>
       </div>
 
       {errorMessage && (
-        <div className="form-error-banner" role="alert">
-          <span className="error-icon">⚠</span>
-          <span>{errorMessage}</span>
+        <div className="alert-box alert-error" role="alert">
+          <span className="alert-icon">⚠️</span>
+          <div className="alert-content">
+            <strong>Revisa los campos del formulario:</strong>
+            <p>{errorMessage}</p>
+          </div>
         </div>
       )}
 
-      {/* SECCIÓN 1: DATOS GENERALES */}
-      <fieldset className="fieldset-section">
-        <legend className="section-legend">
-          <span className="legend-number">01</span>
+      {/* BLOQUE 1: DATOS DEL COMPROBANTE */}
+      <div className="form-section-card">
+        <div className="section-card-heading">
+          <span className="section-number">1</span>
           <div>
-            <strong>Datos del Comprobante</strong>
-            <small>Identificador correlativo, fechas y estado</small>
+            <h3>Datos Generales del Comprobante</h3>
+            <small>Identificación, fecha de emisión y régimen tributario</small>
           </div>
-        </legend>
+        </div>
 
-        <div className="form-grid-3">
-          <label>
-            <span>Nº de Factura *</span>
+        <div className="grid-fields grid-fields-4">
+          <label className="field-group">
+            <span className="field-label">Nº de Factura <span className="req">*</span></span>
             <input
               type="text"
+              className="field-input field-input-bold"
               value={formData.number}
               onChange={(e) => handleChange('number', e.target.value)}
               placeholder="FAC-0001"
@@ -282,206 +284,211 @@ export function InvoiceForm({ onCreate, suggestedNumber }) {
             />
           </label>
 
-          <label>
-            <span>Fecha de Emisión *</span>
+          <label className="field-group">
+            <span className="field-label">Fecha de Emisión <span className="req">*</span></span>
             <input
               type="date"
+              className="field-input"
               value={formData.issueDate}
               onChange={(e) => handleChange('issueDate', e.target.value)}
               required
             />
           </label>
 
-          <label>
-            <span>Fecha de Vencimiento</span>
+          <label className="field-group">
+            <span className="field-label">Fecha de Vencimiento</span>
             <input
               type="date"
+              className="field-input"
               value={formData.dueDate}
               onChange={(e) => handleChange('dueDate', e.target.value)}
             />
           </label>
-        </div>
 
-        <div className="form-grid-2">
-          <label>
-            <span>Estado Inicial</span>
+          <label className="field-group">
+            <span className="field-label">Estado Inicial</span>
             <select
+              className="field-input field-select"
               value={formData.status}
               onChange={(e) => handleChange('status', e.target.value)}
-              className="select-input"
             >
-              <option value="pending">Pendiente de Pago</option>
-              <option value="paid">Pagada (Cancelada)</option>
+              <option value="pending">⏳ Pendiente de Pago</option>
+              <option value="paid">✓ Pagada (Cancelada)</option>
             </select>
           </label>
-
-          <label>
-            <span>Impuesto IVA (%)</span>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="1"
-              value={formData.taxRate}
-              onChange={(e) => handleChange('taxRate', e.target.value)}
-              placeholder="12"
-            />
-          </label>
         </div>
-      </fieldset>
+      </div>
 
-      {/* SECCIÓN 2: DATOS DEL EMISOR */}
-      <fieldset className="fieldset-section">
-        <legend className="section-legend">
-          <span className="legend-number">02</span>
-          <div>
-            <strong>Datos del Emisor</strong>
-            <small>Información tributaria de la empresa</small>
+      {/* BLOQUE 2: EMISOR Y CLIENTE (DOS COLUMNAS PARALELAS) */}
+      <div className="form-parties-layout">
+        {/* EMISOR */}
+        <div className="form-section-card party-section-card">
+          <div className="section-card-heading section-card-between">
+            <div className="heading-with-icon">
+              <span className="section-number">2A</span>
+              <div>
+                <h3>Empresa Emisora (De:)</h3>
+                <small>Datos de la pequeña empresa</small>
+              </div>
+            </div>
+            <label className="toggle-checkbox-label">
+              <input
+                type="checkbox"
+                checked={useDefaultCompany}
+                onChange={handleToggleDefaultCompany}
+              />
+              <span>Usar datos de la empresa</span>
+            </label>
           </div>
-          <label className="checkbox-pill">
-            <input
-              type="checkbox"
-              checked={useDefaultCompany}
-              onChange={handleToggleDefaultCompany}
-            />
-            <span>Usar datos de la empresa</span>
-          </label>
-        </legend>
 
-        <div className="form-grid-2">
-          <label>
-            <span>Razón Social / Nombre Emisor *</span>
+          <div className="grid-fields grid-fields-2">
+            <label className="field-group">
+              <span className="field-label">Razón Social <span className="req">*</span></span>
+              <input
+                type="text"
+                className="field-input"
+                value={formData.issuer.name}
+                onChange={(e) => handleIssuerChange('name', e.target.value)}
+                placeholder="TechStore S.A."
+                required
+              />
+            </label>
+
+            <label className="field-group">
+              <span className="field-label">NIT / RUC / ID Fiscal <span className="req">*</span></span>
+              <input
+                type="text"
+                className="field-input"
+                value={formData.issuer.taxId}
+                onChange={(e) => handleIssuerChange('taxId', e.target.value)}
+                placeholder="J-40123456-7"
+                required
+              />
+            </label>
+          </div>
+
+          <div className="grid-fields grid-fields-2">
+            <label className="field-group">
+              <span className="field-label">Correo Electrónico</span>
+              <input
+                type="email"
+                className="field-input"
+                value={formData.issuer.email}
+                onChange={(e) => handleIssuerChange('email', e.target.value)}
+                placeholder="facturacion@empresa.com"
+              />
+            </label>
+
+            <label className="field-group">
+              <span className="field-label">Teléfono</span>
+              <input
+                type="text"
+                className="field-input"
+                value={formData.issuer.phone}
+                onChange={(e) => handleIssuerChange('phone', e.target.value)}
+                placeholder="+57 300 123 4567"
+              />
+            </label>
+          </div>
+
+          <label className="field-group">
+            <span className="field-label">Dirección Fiscal</span>
             <input
               type="text"
-              value={formData.issuer.name}
-              onChange={(e) => handleIssuerChange('name', e.target.value)}
-              placeholder="TechStore S.A."
-              required
-            />
-          </label>
-
-          <label>
-            <span>NIT / RUC / ID Fiscal *</span>
-            <input
-              type="text"
-              value={formData.issuer.taxId}
-              onChange={(e) => handleIssuerChange('taxId', e.target.value)}
-              placeholder="J-40123456-7"
-              required
-            />
-          </label>
-        </div>
-
-        <div className="form-grid-3">
-          <label>
-            <span>Correo Emisor</span>
-            <input
-              type="email"
-              value={formData.issuer.email}
-              onChange={(e) => handleIssuerChange('email', e.target.value)}
-              placeholder="facturacion@empresa.com"
-            />
-          </label>
-
-          <label>
-            <span>Teléfono Emisor</span>
-            <input
-              type="text"
-              value={formData.issuer.phone}
-              onChange={(e) => handleIssuerChange('phone', e.target.value)}
-              placeholder="+57 300 000 0000"
-            />
-          </label>
-
-          <label>
-            <span>Dirección Emisor</span>
-            <input
-              type="text"
+              className="field-input"
               value={formData.issuer.address}
               onChange={(e) => handleIssuerChange('address', e.target.value)}
-              placeholder="Av. Principal #123"
+              placeholder="Av. Las Palmas #45-12"
             />
           </label>
         </div>
-      </fieldset>
 
-      {/* SECCIÓN 3: DATOS DEL CLIENTE */}
-      <fieldset className="fieldset-section">
-        <legend className="section-legend">
-          <span className="legend-number">03</span>
-          <div>
-            <strong>Datos del Cliente (Receptor)</strong>
-            <small>A quién va dirigida la factura</small>
+        {/* CLIENTE */}
+        <div className="form-section-card party-section-card">
+          <div className="section-card-heading">
+            <div className="heading-with-icon">
+              <span className="section-number">2B</span>
+              <div>
+                <h3>Cliente / Destinatario (Para:)</h3>
+                <small>Información del comprador</small>
+              </div>
+            </div>
           </div>
-        </legend>
 
-        <div className="form-grid-2">
-          <label>
-            <span>Cliente / Razón Social *</span>
+          <div className="grid-fields grid-fields-2">
+            <label className="field-group">
+              <span className="field-label">Nombre / Razón Social <span className="req">*</span></span>
+              <input
+                type="text"
+                className="field-input"
+                value={formData.client.name}
+                onChange={(e) => handleClientChange('name', e.target.value)}
+                placeholder="Nombre o empresa del cliente"
+                required
+              />
+            </label>
+
+            <label className="field-group">
+              <span className="field-label">NIT / Cédula / ID Fiscal</span>
+              <input
+                type="text"
+                className="field-input"
+                value={formData.client.taxId}
+                onChange={(e) => handleClientChange('taxId', e.target.value)}
+                placeholder="900.542.112-4"
+              />
+            </label>
+          </div>
+
+          <div className="grid-fields grid-fields-2">
+            <label className="field-group">
+              <span className="field-label">Correo Electrónico <span className="req">*</span></span>
+              <input
+                type="email"
+                className="field-input"
+                value={formData.client.email}
+                onChange={(e) => handleClientChange('email', e.target.value)}
+                placeholder="cliente@empresa.com"
+                required
+              />
+            </label>
+
+            <label className="field-group">
+              <span className="field-label">Teléfono de Contacto</span>
+              <input
+                type="text"
+                className="field-input"
+                value={formData.client.phone}
+                onChange={(e) => handleClientChange('phone', e.target.value)}
+                placeholder="+57 310 987 6543"
+              />
+            </label>
+          </div>
+
+          <label className="field-group">
+            <span className="field-label">Dirección de Entrega / Fiscal</span>
             <input
               type="text"
-              value={formData.client.name}
-              onChange={(e) => handleClientChange('name', e.target.value)}
-              placeholder="Nombre o empresa del cliente"
-              required
-            />
-          </label>
-
-          <label>
-            <span>NIT / Cédula / ID Fiscal</span>
-            <input
-              type="text"
-              value={formData.client.taxId}
-              onChange={(e) => handleClientChange('taxId', e.target.value)}
-              placeholder="900.123.456-7"
-            />
-          </label>
-        </div>
-
-        <div className="form-grid-3">
-          <label>
-            <span>Correo Electrónico *</span>
-            <input
-              type="email"
-              value={formData.client.email}
-              onChange={(e) => handleClientChange('email', e.target.value)}
-              placeholder="cliente@correo.com"
-              required
-            />
-          </label>
-
-          <label>
-            <span>Teléfono de Contacto</span>
-            <input
-              type="text"
-              value={formData.client.phone}
-              onChange={(e) => handleClientChange('phone', e.target.value)}
-              placeholder="+57 310 000 0000"
-            />
-          </label>
-
-          <label>
-            <span>Dirección Fiscal</span>
-            <input
-              type="text"
+              className="field-input"
               value={formData.client.address}
               onChange={(e) => handleClientChange('address', e.target.value)}
-              placeholder="Calle 10 #20-30"
+              placeholder="Calle 100 #15-31"
             />
           </label>
         </div>
-      </fieldset>
+      </div>
 
-      {/* SECCIÓN 4: DETALLE DE CONCEPTOS (PRODUCTOS O SERVICIOS) */}
-      <fieldset className="fieldset-section">
-        <div className="section-legend-with-action">
-          <legend className="section-legend">
-            <span className="legend-number">04</span>
+      {/* BLOQUE 3: LÍNEAS DE CONCEPTOS (PRODUCTOS O SERVICIOS) */}
+      <div className="form-section-card">
+        <div className="section-card-heading section-card-between">
+          <div className="heading-with-icon">
+            <span className="section-number">3</span>
             <div>
-              <strong>Detalle de Ítems</strong>
-              <small>Productos y servicios a facturar</small>
+              <h3>Conceptos a Facturar</h3>
+              <small>Especifica cada producto, servicio, cantidad y precio unitario</small>
             </div>
-          </legend>
+          </div>
+
           <button
             type="button"
             className="button button-soft button-sm"
@@ -491,39 +498,41 @@ export function InvoiceForm({ onCreate, suggestedNumber }) {
           </button>
         </div>
 
-        <div className="items-table-wrapper">
-          <div className="items-table-header">
-            <span className="col-idx">#</span>
-            <span className="col-desc">Descripción del Producto / Servicio</span>
-            <span className="col-qty">Cant.</span>
-            <span className="col-price">Precio Unit. ($)</span>
-            <span className="col-subtotal">Subtotal ($)</span>
-            <span className="col-action"></span>
+        <div className="items-table-container">
+          <div className="items-grid-header">
+            <span className="h-idx">#</span>
+            <span className="h-desc">Descripción del Producto o Servicio</span>
+            <span className="h-qty">Cant.</span>
+            <span className="h-price">Precio Unit. ($)</span>
+            <span className="h-total">Subtotal ($)</span>
+            <span className="h-del"></span>
           </div>
 
-          <div className="items-table-body">
+          <div className="items-grid-body">
             {formData.items.map((item, index) => {
               const lineSubtotal = calculateItemSubtotal(item.quantity, item.price)
               return (
-                <div className="item-row-edit" key={item.id}>
-                  <span className="col-idx item-idx-number">
+                <div className="items-grid-row" key={item.id}>
+                  <span className="cell-item-idx">
                     {String(index + 1).padStart(2, '0')}
                   </span>
+
                   <input
                     type="text"
-                    className="col-desc input-item"
-                    placeholder="Ej. Asesoría técnica, Teclado inalámbrico..."
+                    className="field-input cell-item-desc"
+                    placeholder="Ej. Teclado ergonómico, Mantenimiento de servidores..."
                     value={item.description}
                     onChange={(e) =>
                       handleItemChange(item.id, 'description', e.target.value)
                     }
                     required
                   />
+
                   <input
                     type="number"
                     min="1"
                     step="1"
-                    className="col-qty input-item"
+                    className="field-input cell-item-qty"
                     placeholder="1"
                     value={item.quantity}
                     onChange={(e) =>
@@ -531,11 +540,12 @@ export function InvoiceForm({ onCreate, suggestedNumber }) {
                     }
                     required
                   />
+
                   <input
                     type="number"
                     min="0"
                     step="0.01"
-                    className="col-price input-item"
+                    className="field-input cell-item-price"
                     placeholder="0.00"
                     value={item.price}
                     onChange={(e) =>
@@ -543,12 +553,14 @@ export function InvoiceForm({ onCreate, suggestedNumber }) {
                     }
                     required
                   />
-                  <span className="col-subtotal item-subtotal-display">
+
+                  <div className="cell-item-subtotal">
                     {formatCurrency(lineSubtotal)}
-                  </span>
+                  </div>
+
                   <button
                     type="button"
-                    className="col-action icon-delete-btn"
+                    className="item-row-delete"
                     onClick={() => handleRemoveItem(item.id)}
                     disabled={formData.items.length <= 1}
                     title="Eliminar este ítem"
@@ -561,50 +573,74 @@ export function InvoiceForm({ onCreate, suggestedNumber }) {
             })}
           </div>
         </div>
+      </div>
 
-        {/* NOTAS ADICIONALES */}
-        <div className="notes-field">
-          <label>
-            <span>Términos, Condiciones o Notas</span>
+      {/* BLOQUE 4: NOTAS Y RESUMEN FINANCIERO */}
+      <div className="form-section-card form-footer-section">
+        <div className="footer-notes-col">
+          <label className="field-group">
+            <span className="field-label">Condiciones de Pago y Notas para el Cliente</span>
             <textarea
-              rows="2"
+              className="field-input field-textarea"
+              rows="3"
               value={formData.notes}
               onChange={(e) => handleChange('notes', e.target.value)}
-              placeholder="Instrucciones bancarias, método de pago, política de garantía..."
+              placeholder="Ej. Cuenta corriente Bancolombia Nº 123-456789. Plazo de 15 días..."
             />
           </label>
+
+          <div className="tax-config-row">
+            <label className="tax-label-group">
+              <span className="field-label">Tasa de Impuesto IVA:</span>
+              <div className="tax-input-wrap">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  className="field-input tax-number-input"
+                  value={formData.taxRate}
+                  onChange={(e) => handleChange('taxRate', e.target.value)}
+                />
+                <span className="tax-percent-sym">%</span>
+              </div>
+            </label>
+          </div>
         </div>
 
-        {/* RESUMEN EN VIVO DE TOTALES */}
-        <div className="live-summary-card">
-          <div className="live-summary-row">
+        {/* TARJETA DE TOTALES EN VIVO */}
+        <div className="footer-summary-card">
+          <div className="summary-title-row">
+            <span>Resumen Contable</span>
+            <span className="summary-currency-tag">USD ($)</span>
+          </div>
+
+          <div className="summary-calc-row">
             <span>Subtotal Neto:</span>
             <strong>{formatCurrency(liveTotals.subtotal)}</strong>
           </div>
-          <div className="live-summary-row">
-            <span>Impuesto IVA ({formData.taxRate}%):</span>
+
+          <div className="summary-calc-row">
+            <span>IVA Calculado ({formData.taxRate}%):</span>
             <strong>{formatCurrency(liveTotals.taxAmount)}</strong>
           </div>
-          <div className="live-summary-row live-summary-total">
+
+          <div className="summary-divider" />
+
+          <div className="summary-calc-row summary-grand-total">
             <span>Total a Pagar:</span>
-            <strong className="accent-total">{formatCurrency(liveTotals.total)}</strong>
+            <span className="total-highlight">{formatCurrency(liveTotals.total)}</span>
+          </div>
+
+          <div className="form-action-buttons">
+            <button
+              type="submit"
+              className="button button-primary button-lg button-full-width"
+            >
+              <span>✓ Emitir y Guardar Factura</span>
+            </button>
           </div>
         </div>
-      </fieldset>
-
-      {/* PIE DEL FORMULARIO CON BOTONES */}
-      <div className="form-submit-footer">
-        <button
-          type="button"
-          className="button button-outline"
-          onClick={handleReset}
-        >
-          Limpiar
-        </button>
-        <button type="submit" className="button button-primary button-lg">
-          <span>Guardar y Emitir Factura</span>
-          <span className="btn-arrow">→</span>
-        </button>
       </div>
     </form>
   )
